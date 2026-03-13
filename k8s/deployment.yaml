@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oxmux
+  namespace: oxmux
+  labels:
+    app.kubernetes.io/name: oxmux
+    app.kubernetes.io/component: server
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: oxmux
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: oxmux
+      annotations:
+        # Force pod restart when configmap changes
+        checksum/config: "{{ include (print .Template.BasePath \"/configmap.yaml\") . | sha256sum }}"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+
+      containers:
+        - name: oxmux
+          image: ghcr.io/gjovanov/oxmux:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: quic
+              containerPort: 4433
+              protocol: UDP
+
+          envFrom:
+            - configMapRef:
+                name: oxmux-config
+            - secretRef:
+                name: oxmux-secret
+
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/oxmux/tls
+              readOnly: true
+            - name: data
+              mountPath: /data
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+      volumes:
+        - name: tls
+          secret:
+            secretName: oxmux-tls   # created by cert-manager
+        - name: data
+          emptyDir: {}              # use PVC for persistent SQLite in production
+
+      imagePullSecrets:
+        - name: ghcr-credentials

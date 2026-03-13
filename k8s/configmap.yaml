@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: oxmux-config
+  namespace: oxmux
+  labels:
+    app.kubernetes.io/name: oxmux
+data:
+  OXMUX_HOST: "0.0.0.0"
+  OXMUX_PORT: "8080"
+  OXMUX_LOG_LEVEL: "info"
+
+  # QUIC
+  QUIC_LISTEN_PORT: "4433"
+  QUIC_CERT_PATH: "/etc/oxmux/tls/tls.crt"
+  QUIC_KEY_PATH: "/etc/oxmux/tls/tls.key"
+
+  # COTURN — public cluster (k8s-cluster-multi)
+  COTURN_REALM: "coturn.roomler.live"
+  COTURN_TTL: "86400"
+  COTURN_SERVERS: "198.51.100.10:3478,198.51.100.20:3478,198.51.100.30:3478"
+  COTURN_TLS_SERVERS: "198.51.100.10:5349,198.51.100.20:5349,198.51.100.30:5349"
+
+  # Claude defaults
+  CLAUDE_DEFAULT_FLAGS: "--output-format stream-json"
+  CLAUDE_COST_ALERT_USD: "1.00"
+  CLAUDE_CONTEXT_WARN_THRESHOLD: "0.80"
+
+  # Database (SQLite in-cluster, override with Postgres URL in secret if needed)
+  DATABASE_URL: "sqlite:/data/oxmux.db"

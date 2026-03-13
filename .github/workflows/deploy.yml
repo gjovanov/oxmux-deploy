@@ -1,0 +1,53 @@
+name: Deploy
+
+on:
+  repository_dispatch:
+    types: [image-updated]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (default: latest)'
+        required: false
+        default: 'latest'
+
+jobs:
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: tag
+        run: |
+          if [[ "${{ github.event_name }}" == "repository_dispatch" ]]; then
+            echo "tag=${{ github.event.client_payload.sha }}" >> $GITHUB_OUTPUT
+            echo "image=${{ github.event.client_payload.image }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag=${{ inputs.image_tag }}" >> $GITHUB_OUTPUT
+            echo "image=ghcr.io/gjovanov/oxmux:${{ inputs.image_tag }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.31.0'
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Deploy
+        run: |
+          chmod +x scripts/deploy.sh
+          ./scripts/deploy.sh "${{ steps.tag.outputs.tag }}"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Deploy of ${{ steps.tag.outputs.image }} failed"
+          # Add Slack/email notification here if desired
