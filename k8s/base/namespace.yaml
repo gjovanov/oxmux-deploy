@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: oxmux
+  labels:
+    app.kubernetes.io/name: oxmux
+    topology.kubernetes.io/zone: multi

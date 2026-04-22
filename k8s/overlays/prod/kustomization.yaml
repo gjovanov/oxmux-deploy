@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: oxmux
+
+resources:
+  - ../../base
+
+# Prod overlay: pins a specific image tag rewritten by CI on each build.
+# The secret is managed out-of-band (SealedSecret) — not part of the kustomize tree
+# until Phase 4 lands.
+images:
+  - name: oxmux
+    newName: registry.roomler.ai/oxmux
+    newTag: v20260423-098f6f8b

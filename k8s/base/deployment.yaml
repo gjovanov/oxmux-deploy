@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: oxmux
+  namespace: oxmux
+  labels:
+    app.kubernetes.io/name: oxmux
+    app.kubernetes.io/component: server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oxmux
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: oxmux
+      annotations: {}
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: k8s-worker-2
+
+      imagePullSecrets:
+        - name: regcred
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+
+      containers:
+        - name: oxmux
+          image: oxmux:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+            - name: quic
+              containerPort: 4433
+              protocol: UDP
+
+          envFrom:
+            - configMapRef:
+                name: oxmux-config
+            - secretRef:
+                name: oxmux-secret
+
+          volumeMounts:
+            - name: tls
+              mountPath: /etc/oxmux/tls
+              readOnly: true
+            - name: ssh-keys
+              mountPath: /home/oxmux/.ssh
+              readOnly: true
+            - name: data
+              mountPath: /data
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+      volumes:
+        - name: tls
+          secret:
+            secretName: oxmux-tls
+            optional: true          # TLS certs for QUIC — created manually if needed
+        - name: ssh-keys
+          secret:
+            secretName: ssh-keys
+            defaultMode: 0600       # SSH requires restrictive permissions
+        - name: data
+          hostPath:
+            path: /data/oxmux
+            type: DirectoryOrCreate
