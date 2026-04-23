@@ -1,0 +1,40 @@
+---
+# ClusterIP for HTTP/WebSocket (proxied by ingress)
+apiVersion: v1
+kind: Service
+metadata:
+  name: oxmux
+  namespace: oxmux
+  labels:
+    app.kubernetes.io/name: oxmux
+spec:
+  selector:
+    app: oxmux
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      nodePort: 30080
+      protocol: TCP
+  type: NodePort
+
+---
+# NodePort for QUIC UDP (not supported by standard ingress controllers)
+apiVersion: v1
+kind: Service
+metadata:
+  name: oxmux-quic
+  namespace: oxmux
+  labels:
+    app.kubernetes.io/name: oxmux
+    app.kubernetes.io/component: quic
+spec:
+  selector:
+    app: oxmux
+  ports:
+    - name: quic
+      port: 4433
+      targetPort: 4433
+      nodePort: 30443
+      protocol: UDP
+  type: NodePort
