@@ -9,6 +9,8 @@ resources:
   - deployment.yaml
   - service.yaml
   - hpa.yaml
+  - sealed/sealed-oxmux-secret.yaml
+  - sealed/sealed-ssh-keys.yaml
 
 labels:
   - includeSelectors: false
