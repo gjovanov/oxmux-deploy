@@ -13,3 +13,38 @@ images:
   - name: oxmux
     newName: registry.roomler.ai/oxmux
     newTag: v20260423-098f6f8b
+# ----------------------------------------------------------------------
+# Tier policy (added 2026-05-01).
+# Cluster nodes are labelled:
+#   tier=high-performance  on zeus + jupiter workers
+#   tier=utility           on mars worker
+# This app must run only on the matching tier. The hostname-pin nodeSelector
+# in base/ is left intact (where present) for stateful pods whose data lives
+# on a specific node; this affinity is an ADDITIONAL constraint.
+patches:
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: add
+        path: /spec/template/spec/affinity
+        value:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: tier
+                      operator: In
+                      values: [high-performance]
+  - target:
+      kind: StatefulSet
+    patch: |-
+      - op: add
+        path: /spec/template/spec/affinity
+        value:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+                - matchExpressions:
+                    - key: tier
+                      operator: In
+                      values: [high-performance]
